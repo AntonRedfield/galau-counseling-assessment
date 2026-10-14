@@ -1,0 +1,89 @@
+/**
+ * Inisialisasi Firebase SDK
+ * Mendukung konfigurasi melalui Environment Variables (.env)
+ * atau konfigurasi langsung melalui Antarmuka Pengaturan (localStorage)
+ */
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+
+const STORAGE_KEY_FIREBASE_CONFIG = 'galau_firebase_config';
+
+// Cek konfigurasi default dari env atau localStorage
+export function getStoredFirebaseConfig() {
+  try {
+    const fromStorage = localStorage.getItem(STORAGE_KEY_FIREBASE_CONFIG);
+    if (fromStorage) {
+      return JSON.parse(fromStorage);
+    }
+  } catch (e) {
+    console.warn('Gagal membaca konfigurasi Firebase dari localStorage:', e);
+  }
+
+  // Fallback ke Vite Environment Variables jika ada
+  return {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || ''
+  };
+}
+
+export function isFirebaseConfigValid(config) {
+  return Boolean(
+    config &&
+    config.apiKey &&
+    config.apiKey.trim().length > 10 &&
+    config.projectId &&
+    config.projectId.trim().length > 3
+  );
+}
+
+let firebaseApp = null;
+let firestoreDb = null;
+let firebaseAuthInstance = null;
+
+export function initFirebase() {
+  const config = getStoredFirebaseConfig();
+
+  if (!isFirebaseConfigValid(config)) {
+    return { isConfigured: false, db: null, auth: null };
+  }
+
+  try {
+    if (!getApps().length) {
+      firebaseApp = initializeApp(config);
+    } else {
+      firebaseApp = getApp();
+    }
+    firestoreDb = getFirestore(firebaseApp);
+    firebaseAuthInstance = getAuth(firebaseApp);
+    return { isConfigured: true, db: firestoreDb, auth: firebaseAuthInstance };
+  } catch (error) {
+    console.error('Inisialisasi Firebase Gagal:', error);
+    return { isConfigured: false, error, db: null, auth: null };
+  }
+}
+
+export function saveFirebaseConfig(newConfig) {
+  try {
+    localStorage.setItem(STORAGE_KEY_FIREBASE_CONFIG, JSON.stringify(newConfig));
+    // Re-inisialisasi
+    window.location.reload();
+  } catch (e) {
+    console.error('Gagal menyimpan konfigurasi Firebase:', e);
+  }
+}
+
+export function removeFirebaseConfig() {
+  localStorage.removeItem(STORAGE_KEY_FIREBASE_CONFIG);
+  window.location.reload();
+}
+
+// Inisialisasi awal
+const currentFirebase = initFirebase();
+export const db = currentFirebase.db;
+export const auth = currentFirebase.auth;
+export const isFirebaseActive = currentFirebase.isConfigured;

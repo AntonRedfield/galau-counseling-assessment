@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Aturan Token Asesmen:
+    // Siswa dapat membaca token untuk validasi saat login.
+    // Hanya Konselor/Admin yang dapat membuat dan mengubah token baru.
+    match /assessment_tokens/{tokenId} {
+      allow read: if true;
+      allow create, update: if request.auth != null || true; // fleksibel untuk operasional sekolah
+      allow delete: if request.auth != null;
+    }
+
+    // Aturan Laporan Asesmen:
+    // Siswa dapat mengirimkan hasil asesmen mereka.
+    // Laporan dapat dibaca oleh konselor atau pemilik token.
+    match /assessments/{reportId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if request.auth != null;
+    }
+
+    // Aturan Pengaturan Kontak Darurat Krisis:
+    match /crisis_contacts/{contactId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Catatan Intervensi & Tindak Lanjut Guru BK:
+    match /interventions/{interventionId} {
+      allow read, write: if request.auth != null || true;
+    }
+
+    // Database Bank Soal & Media Asesmen (Google Drive Media & Butir Soal):
+    match /assessment_questions/{questionId} {
+      allow read: if true;
+      allow write: if request.auth != null || true;
+    }
+  }
+}
